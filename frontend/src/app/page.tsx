@@ -2,34 +2,12 @@
 
 import { useState, useRef } from 'react';
 import { NdaFormData } from '@/types/nda';
-import { NdaForm } from '@/components/NdaForm';
+import { NdaForm, defaultNdaValues } from '@/components/NdaForm';
 import { NdaPreview } from '@/components/NdaPreview';
 import { DownloadButton } from '@/components/DownloadButton';
 
-const today = new Date().toISOString().split('T')[0];
-
-const defaultFormData: NdaFormData = {
-  purpose: 'Evaluating whether to enter into a business relationship with the other party.',
-  effectiveDate: today,
-  mndaTermType: 'expires',
-  mndaTermYears: 1,
-  confidentialityTermType: 'years',
-  confidentialityTermYears: 1,
-  governingLaw: 'Delaware',
-  jurisdiction: 'New Castle, DE',
-  modifications: '',
-  party1Name: '',
-  party1Title: '',
-  party1Company: '',
-  party1NoticeAddress: '',
-  party2Name: '',
-  party2Title: '',
-  party2Company: '',
-  party2NoticeAddress: '',
-};
-
 export default function Home() {
-  const [formData, setFormData] = useState<NdaFormData>(defaultFormData);
+  const [formData, setFormData] = useState<NdaFormData>(defaultNdaValues);
   const previewRef = useRef<HTMLDivElement>(null);
 
   return (

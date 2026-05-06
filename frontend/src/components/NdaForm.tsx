@@ -1,10 +1,9 @@
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useEffect } from 'react';
-import { NdaFormData } from '@/types/nda';
+import { useForm, Controller, type UseFormRegister, type FieldErrors, type Path } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ndaSchema, NdaFormData } from '@/types/nda';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,31 +11,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
-const schema = z.object({
-  purpose: z.string().min(1, 'Purpose is required'),
-  effectiveDate: z.string().min(1, 'Effective date is required'),
-  mndaTermType: z.enum(['expires', 'until_terminated']),
-  mndaTermYears: z.number().min(1).max(20),
-  confidentialityTermType: z.enum(['years', 'perpetuity']),
-  confidentialityTermYears: z.number().min(1).max(20),
-  governingLaw: z.string().min(1, 'Governing law state is required'),
-  jurisdiction: z.string().min(1, 'Jurisdiction is required'),
-  modifications: z.string(),
-  party1Name: z.string().min(1, 'Party 1 name is required'),
-  party1Title: z.string().min(1, 'Party 1 title is required'),
-  party1Company: z.string().min(1, 'Party 1 company is required'),
-  party1NoticeAddress: z.string().min(1, 'Party 1 notice address is required'),
-  party2Name: z.string().min(1, 'Party 2 name is required'),
-  party2Title: z.string().min(1, 'Party 2 title is required'),
-  party2Company: z.string().min(1, 'Party 2 company is required'),
-  party2NoticeAddress: z.string().min(1, 'Party 2 notice address is required'),
-});
-
-type SchemaType = z.infer<typeof schema>;
-
 const today = new Date().toISOString().split('T')[0];
 
-const defaultValues: SchemaType = {
+export const defaultNdaValues: NdaFormData = {
   purpose: 'Evaluating whether to enter into a business relationship with the other party.',
   effectiveDate: today,
   mndaTermType: 'expires',
@@ -60,25 +37,79 @@ interface NdaFormProps {
   onChange: (data: NdaFormData) => void;
 }
 
+interface PartyFieldsProps {
+  partyNum: 1 | 2;
+  fields: {
+    name: Path<NdaFormData>;
+    title: Path<NdaFormData>;
+    company: Path<NdaFormData>;
+    address: Path<NdaFormData>;
+  };
+  placeholders: { name: string; title: string; company: string };
+  register: UseFormRegister<NdaFormData>;
+  errors: FieldErrors<NdaFormData>;
+}
+
+function PartyFields({ partyNum, fields, placeholders, register, errors }: PartyFieldsProps) {
+  const err = errors as Record<string, { message?: string } | undefined>;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Party {partyNum}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor={fields.name}>Full Name <span className="text-red-500">*</span></Label>
+            <Input id={fields.name} placeholder={placeholders.name} {...register(fields.name)} />
+            {err[fields.name] && <p className="text-xs text-red-500">{err[fields.name]?.message}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={fields.title}>Title <span className="text-red-500">*</span></Label>
+            <Input id={fields.title} placeholder={placeholders.title} {...register(fields.title)} />
+            {err[fields.title] && <p className="text-xs text-red-500">{err[fields.title]?.message}</p>}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={fields.company}>Company <span className="text-red-500">*</span></Label>
+          <Input id={fields.company} placeholder={placeholders.company} {...register(fields.company)} />
+          {err[fields.company] && <p className="text-xs text-red-500">{err[fields.company]?.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={fields.address}>Notice Address <span className="text-red-500">*</span></Label>
+          <Textarea
+            id={fields.address}
+            rows={2}
+            placeholder="email@example.com or postal address"
+            {...register(fields.address)}
+          />
+          {err[fields.address] && <p className="text-xs text-red-500">{err[fields.address]?.message}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function NdaForm({ onChange }: NdaFormProps) {
   const {
     register,
     control,
     watch,
     formState: { errors },
-  } = useForm<SchemaType>({
-    resolver: zodResolver(schema),
-    defaultValues,
+  } = useForm<NdaFormData>({
+    resolver: zodResolver(ndaSchema),
+    defaultValues: defaultNdaValues,
     mode: 'onChange',
   });
 
-  const watchedValues = watch();
-  const mndaTermType = watch('mndaTermType');
-  const confidentialityTermType = watch('confidentialityTermType');
+  const { mndaTermType, confidentialityTermType } = watch();
 
   useEffect(() => {
-    onChange(watchedValues as NdaFormData);
-  }, [JSON.stringify(watchedValues)]); // eslint-disable-line react-hooks/exhaustive-deps
+    const subscription = watch((value) => {
+      onChange(value as NdaFormData);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, onChange]);
 
   return (
     <form className="space-y-6">
@@ -136,8 +167,11 @@ export function NdaForm({ onChange }: NdaFormProps) {
                       min={1}
                       max={20}
                       className="w-24"
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        field.onChange(isNaN(parsed) ? undefined : parsed);
+                      }}
                     />
                   )}
                 />
@@ -177,8 +211,11 @@ export function NdaForm({ onChange }: NdaFormProps) {
                       min={1}
                       max={20}
                       className="w-24"
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
+                        field.onChange(isNaN(parsed) ? undefined : parsed);
+                      }}
                     />
                   )}
                 />
@@ -213,77 +250,21 @@ export function NdaForm({ onChange }: NdaFormProps) {
         </CardContent>
       </Card>
 
-      {/* Party 1 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Party 1</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="party1Name">Full Name <span className="text-red-500">*</span></Label>
-              <Input id="party1Name" placeholder="Jane Smith" {...register('party1Name')} />
-              {errors.party1Name && <p className="text-xs text-red-500">{errors.party1Name.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="party1Title">Title <span className="text-red-500">*</span></Label>
-              <Input id="party1Title" placeholder="CEO" {...register('party1Title')} />
-              {errors.party1Title && <p className="text-xs text-red-500">{errors.party1Title.message}</p>}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="party1Company">Company <span className="text-red-500">*</span></Label>
-            <Input id="party1Company" placeholder="Acme Corp" {...register('party1Company')} />
-            {errors.party1Company && <p className="text-xs text-red-500">{errors.party1Company.message}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="party1NoticeAddress">Notice Address <span className="text-red-500">*</span></Label>
-            <Textarea
-              id="party1NoticeAddress"
-              rows={2}
-              placeholder="email@example.com or postal address"
-              {...register('party1NoticeAddress')}
-            />
-            {errors.party1NoticeAddress && <p className="text-xs text-red-500">{errors.party1NoticeAddress.message}</p>}
-          </div>
-        </CardContent>
-      </Card>
+      <PartyFields
+        partyNum={1}
+        fields={{ name: 'party1Name', title: 'party1Title', company: 'party1Company', address: 'party1NoticeAddress' }}
+        placeholders={{ name: 'Jane Smith', title: 'CEO', company: 'Acme Corp' }}
+        register={register}
+        errors={errors}
+      />
 
-      {/* Party 2 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Party 2</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="party2Name">Full Name <span className="text-red-500">*</span></Label>
-              <Input id="party2Name" placeholder="John Doe" {...register('party2Name')} />
-              {errors.party2Name && <p className="text-xs text-red-500">{errors.party2Name.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="party2Title">Title <span className="text-red-500">*</span></Label>
-              <Input id="party2Title" placeholder="CTO" {...register('party2Title')} />
-              {errors.party2Title && <p className="text-xs text-red-500">{errors.party2Title.message}</p>}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="party2Company">Company <span className="text-red-500">*</span></Label>
-            <Input id="party2Company" placeholder="Globex Inc." {...register('party2Company')} />
-            {errors.party2Company && <p className="text-xs text-red-500">{errors.party2Company.message}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="party2NoticeAddress">Notice Address <span className="text-red-500">*</span></Label>
-            <Textarea
-              id="party2NoticeAddress"
-              rows={2}
-              placeholder="email@example.com or postal address"
-              {...register('party2NoticeAddress')}
-            />
-            {errors.party2NoticeAddress && <p className="text-xs text-red-500">{errors.party2NoticeAddress.message}</p>}
-          </div>
-        </CardContent>
-      </Card>
+      <PartyFields
+        partyNum={2}
+        fields={{ name: 'party2Name', title: 'party2Title', company: 'party2Company', address: 'party2NoticeAddress' }}
+        placeholders={{ name: 'John Doe', title: 'CTO', company: 'Globex Inc.' }}
+        register={register}
+        errors={errors}
+      />
     </form>
   );
 }

@@ -3,6 +3,7 @@
 import { forwardRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { NdaFormData } from '@/types/nda';
 import { renderNda } from '@/lib/nda-renderer';
 
@@ -36,6 +37,7 @@ export const NdaPreview = forwardRef<HTMLDivElement, NdaPreviewProps>(function N
         <div className="prose prose-sm max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
             components={{
               // Render raw HTML for our highlight spans
               p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,

@@ -1,38 +1,18 @@
 import { NdaFormData } from '@/types/nda';
 
-const COVER_PAGE_TEMPLATE = `# Mutual Non-Disclosure Agreement
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-## USING THIS MUTUAL NON-DISCLOSURE AGREEMENT
-
-This Mutual Non-Disclosure Agreement (the "MNDA") consists of: (1) this Cover Page ("**Cover Page**") and (2) the Common Paper Mutual NDA Standard Terms Version 1.0 ("**Standard Terms**") identical to those posted at [commonpaper.com/standards/mutual-nda/1.0](https://commonpaper.com/standards/mutual-nda/1.0). Any modifications of the Standard Terms should be made on the Cover Page, which will control over conflicts with the Standard Terms.
-
-### Purpose
-<label>How Confidential Information may be used</label>
-
-[Evaluating whether to enter into a business relationship with the other party.]
-
-### Effective Date
-[Today's date]
-
-### MNDA Term
-<label>The length of this MNDA</label>
-- [x]     Expires [1 year(s)] from Effective Date.
-- [ ]     Continues until terminated in accordance with the terms of the MNDA.
-
-### Term of Confidentiality
-<label>How long Confidential Information is protected</label>
-- [x]     [1 year(s)] from Effective Date, but in the case of trade secrets until Confidential Information is no longer considered a trade secret under applicable laws.
-- [ ]     In perpetuity.
-
-### Governing Law & Jurisdiction
-Governing Law: [Fill in state]
-
-Jurisdiction: [Fill in city or county and state, i.e. "courts located in New Castle, DE"]
-
-### MNDA Modifications
-List any modifications to the MNDA
-
-By signing this Cover Page, each party agrees to enter into this MNDA as of the Effective Date.`;
+function pluralYears(n: number | undefined): string {
+  if (n === undefined) return '[years not set]';
+  return `${n} year${n !== 1 ? 's' : ''}`;
+}
 
 const STANDARD_TERMS_TEMPLATE = `# Standard Terms
 
@@ -62,18 +42,18 @@ const STANDARD_TERMS_TEMPLATE = `# Standard Terms
 
 function highlight(value: string): string {
   if (!value) return '<span class="bg-yellow-100 font-semibold px-0.5 rounded text-gray-700">[not set]</span>';
-  return `<span class="bg-yellow-100 font-semibold px-0.5 rounded text-gray-900">${value}</span>`;
+  return `<span class="bg-yellow-100 font-semibold px-0.5 rounded text-gray-900">${escapeHtml(value)}</span>`;
 }
 
 export function renderNda(data: NdaFormData): { coverPageHtml: string; standardTermsMarkdown: string } {
   const mndaTermText =
     data.mndaTermType === 'expires'
-      ? `${data.mndaTermYears} year${data.mndaTermYears !== 1 ? 's' : ''} from Effective Date`
+      ? `${pluralYears(data.mndaTermYears)} from Effective Date`
       : 'Until terminated in accordance with the terms of the MNDA';
 
   const confidentialityTermText =
     data.confidentialityTermType === 'years'
-      ? `${data.confidentialityTermYears} year${data.confidentialityTermYears !== 1 ? 's' : ''} from Effective Date`
+      ? `${pluralYears(data.confidentialityTermYears)} from Effective Date`
       : 'In perpetuity';
 
   const formattedDate = data.effectiveDate
@@ -96,7 +76,7 @@ export function renderNda(data: NdaFormData): { coverPageHtml: string; standardT
   <div class="mb-5">
     <h3 class="text-base font-bold mb-1">Purpose</h3>
     <p class="text-xs text-gray-500 mb-1">How Confidential Information may be used</p>
-    <p class="text-sm">${data.purpose || '[Purpose not set]'}</p>
+    <p class="text-sm">${escapeHtml(data.purpose) || '[Purpose not set]'}</p>
   </div>
 
   <div class="mb-5">
@@ -108,7 +88,7 @@ export function renderNda(data: NdaFormData): { coverPageHtml: string; standardT
     <h3 class="text-base font-bold mb-1">MNDA Term</h3>
     <p class="text-xs text-gray-500 mb-1">The length of this MNDA</p>
     <ul class="text-sm list-none space-y-1">
-      <li>${data.mndaTermType === 'expires' ? '☑' : '☐'} &nbsp;Expires <strong>${data.mndaTermYears} year${data.mndaTermYears !== 1 ? 's' : ''}</strong> from Effective Date.</li>
+      <li>${data.mndaTermType === 'expires' ? '☑' : '☐'} &nbsp;Expires <strong>${pluralYears(data.mndaTermYears)}</strong> from Effective Date.</li>
       <li>${data.mndaTermType === 'until_terminated' ? '☑' : '☐'} &nbsp;Continues until terminated in accordance with the terms of the MNDA.</li>
     </ul>
   </div>
@@ -117,20 +97,20 @@ export function renderNda(data: NdaFormData): { coverPageHtml: string; standardT
     <h3 class="text-base font-bold mb-1">Term of Confidentiality</h3>
     <p class="text-xs text-gray-500 mb-1">How long Confidential Information is protected</p>
     <ul class="text-sm list-none space-y-1">
-      <li>${data.confidentialityTermType === 'years' ? '☑' : '☐'} &nbsp;<strong>${data.confidentialityTermYears} year${data.confidentialityTermYears !== 1 ? 's' : ''}</strong> from Effective Date, but in the case of trade secrets until Confidential Information is no longer considered a trade secret under applicable laws.</li>
+      <li>${data.confidentialityTermType === 'years' ? '☑' : '☐'} &nbsp;<strong>${pluralYears(data.confidentialityTermYears)}</strong> from Effective Date, but in the case of trade secrets until Confidential Information is no longer considered a trade secret under applicable laws.</li>
       <li>${data.confidentialityTermType === 'perpetuity' ? '☑' : '☐'} &nbsp;In perpetuity.</li>
     </ul>
   </div>
 
   <div class="mb-5">
     <h3 class="text-base font-bold mb-1">Governing Law &amp; Jurisdiction</h3>
-    <p class="text-sm">Governing Law: <strong>${data.governingLaw || '[State not set]'}</strong></p>
-    <p class="text-sm">Jurisdiction: <strong>${data.jurisdiction || '[Jurisdiction not set]'}</strong></p>
+    <p class="text-sm">Governing Law: <strong>${escapeHtml(data.governingLaw) || '[State not set]'}</strong></p>
+    <p class="text-sm">Jurisdiction: <strong>${escapeHtml(data.jurisdiction) || '[Jurisdiction not set]'}</strong></p>
   </div>
 
   <div class="mb-5">
     <h3 class="text-base font-bold mb-1">MNDA Modifications</h3>
-    <p class="text-sm">${data.modifications || 'None'}</p>
+    <p class="text-sm">${escapeHtml(data.modifications) || 'None'}</p>
   </div>
 
   <p class="text-sm mb-5">By signing this Cover Page, each party agrees to enter into this MNDA as of the Effective Date.</p>
@@ -152,26 +132,26 @@ export function renderNda(data: NdaFormData): { coverPageHtml: string; standardT
         </tr>
         <tr>
           <td class="border border-gray-300 px-3 py-2 font-medium">Print Name</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party1Name || ''}</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party2Name || ''}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party1Name)}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party2Name)}</td>
         </tr>
         <tr>
           <td class="border border-gray-300 px-3 py-2 font-medium">Title</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party1Title || ''}</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party2Title || ''}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party1Title)}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party2Title)}</td>
         </tr>
         <tr>
           <td class="border border-gray-300 px-3 py-2 font-medium">Company</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party1Company || ''}</td>
-          <td class="border border-gray-300 px-3 py-2">${data.party2Company || ''}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party1Company)}</td>
+          <td class="border border-gray-300 px-3 py-2">${escapeHtml(data.party2Company)}</td>
         </tr>
         <tr>
           <td class="border border-gray-300 px-3 py-2 font-medium">
             Notice Address
             <br/><span class="text-xs text-gray-500 font-normal">Use either email or postal address</span>
           </td>
-          <td class="border border-gray-300 px-3 py-2 whitespace-pre-wrap">${data.party1NoticeAddress || ''}</td>
-          <td class="border border-gray-300 px-3 py-2 whitespace-pre-wrap">${data.party2NoticeAddress || ''}</td>
+          <td class="border border-gray-300 px-3 py-2 whitespace-pre-wrap">${escapeHtml(data.party1NoticeAddress)}</td>
+          <td class="border border-gray-300 px-3 py-2 whitespace-pre-wrap">${escapeHtml(data.party2NoticeAddress)}</td>
         </tr>
         <tr>
           <td class="border border-gray-300 px-3 py-2 font-medium">Date</td>
@@ -205,4 +185,4 @@ export function renderNda(data: NdaFormData): { coverPageHtml: string; standardT
   return { coverPageHtml, standardTermsMarkdown };
 }
 
-export { COVER_PAGE_TEMPLATE, STANDARD_TERMS_TEMPLATE };
+export { STANDARD_TERMS_TEMPLATE };

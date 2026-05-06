@@ -15,6 +15,8 @@ export function DownloadButton({ previewRef, formData }: DownloadButtonProps) {
   const handleDownload = async () => {
     if (!previewRef.current) return;
     setLoading(true);
+    const noPrintEls = previewRef.current.querySelectorAll<HTMLElement>('.no-print');
+    noPrintEls.forEach(el => { el.style.display = 'none'; });
     try {
       const html2pdf = (await import('html2pdf.js')).default;
       const filename = `Mutual-NDA-${formData.party1Company || 'Party1'}-${formData.party2Company || 'Party2'}.pdf`
@@ -33,6 +35,7 @@ export function DownloadButton({ previewRef, formData }: DownloadButtonProps) {
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
+      noPrintEls.forEach(el => { el.style.display = ''; });
       setLoading(false);
     }
   };
